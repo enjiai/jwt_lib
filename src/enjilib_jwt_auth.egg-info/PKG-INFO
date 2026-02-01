@@ -1,0 +1,180 @@
+Metadata-Version: 2.4
+Name: enjilib-jwt-auth
+Version: 0.1.0
+Summary: JWT authentication utilities for Enji microservices
+Author: Enji Team
+License: MIT
+Keywords: jwt,authentication,microservices
+Requires-Python: >=3.9
+Description-Content-Type: text/markdown
+Requires-Dist: pyjwt>=2.8.0
+Provides-Extra: dev
+Requires-Dist: pytest>=7.0; extra == "dev"
+Requires-Dist: pytest-asyncio>=0.21.0; extra == "dev"
+Dynamic: requires-python
+
+# enjilib-jwt-auth
+
+JWT authentication utilities for Enji microservices.
+
+## Installation
+
+### From GitHub (development)
+
+Add to your `pyproject.toml`:
+
+```toml
+dependencies = [
+    "enjilib-jwt-auth @ git+https://github.com/your-org/enji-agent.git@main#subdirectory=be/shared/enjilib-jwt-auth",
+]
+```
+
+Or with pip:
+
+```bash
+pip install git+https://github.com/your-org/enji-agent.git@main#subdirectory=be/shared/enjilib-jwt-auth
+```
+
+## Usage
+
+### Basic Example
+
+```python
+from enjilib_jwt import JWTAuthenticator, JWTClaims
+
+# Initialize authenticator with secret key from enji-auth
+authenticator = JWTAuthenticator(secret_key="your-secret-key")
+
+# Verify token and extract claims
+claims = authenticator.verify_and_extract(token)
+
+if claims:
+    print(f"User: {claims.email}")
+    print(f"User ID: {claims.user_id}")
+    print(f"Roles: {claims.roles}")
+    print(f"Permissions: {claims.permissions}")
+```
+
+### With FastAPI
+
+```python
+from fastapi import Depends, HTTPException
+from fastapi.security import HTTPBearer
+from enjilib_jwt import JWTAuthenticator, JWTClaims
+
+security = HTTPBearer()
+authenticator = JWTAuthenticator(settings.jwt_secret_key)
+
+async def get_jwt_claims(credentials = Depends(security)) -> JWTClaims:
+    claims = authenticator.verify_and_extract(credentials.credentials)
+    if not claims:
+        raise HTTPException(status_code=401, detail="Invalid token")
+    return claims
+
+@app.get("/me/")
+async def get_current_user(claims: JWTClaims = Depends(get_jwt_claims)):
+    return {
+        "user_id": claims.user_id,
+        "email": claims.email,
+        "roles": claims.roles,
+    }
+```
+
+### Permission Checks
+
+```python
+# Check single permission
+if authenticator.has_permission(claims, "users.delete"):
+    # Allow user deletion
+    pass
+
+# Check any permission
+if authenticator.has_any_permission(claims, ["admin.users", "admin.config"]):
+    # Grant admin access
+    pass
+
+# Check all permissions
+if authenticator.has_all_permissions(claims, ["users.read", "users.write"]):
+    # Allow full user management
+    pass
+```
+
+### Role Checks
+
+```python
+# Check single role
+if authenticator.has_role(claims, "admin"):
+    # Admin only
+    pass
+
+# Check any role
+if authenticator.has_any_role(claims, ["admin", "moderator"]):
+    # Special access
+    pass
+
+# Check all roles
+if authenticator.has_all_roles(claims, ["editor", "publisher"]):
+    # Both roles required
+    pass
+```
+
+### FastAPI Dependency Factory
+
+```python
+from fastapi import Depends
+
+async def require_permission(permission: str):
+    async def check(claims: JWTClaims = Depends(get_jwt_claims)) -> JWTClaims:
+        if not authenticator.has_permission(claims, permission):
+            raise HTTPException(status_code=403)
+        return claims
+    return check
+
+@app.post("/files/delete/")
+async def delete_file(
+    file_id: int,
+    claims: JWTClaims = Depends(require_permission("files.delete"))
+):
+    # User already has permission
+    return {"deleted": file_id}
+```
+
+## JWT Token Structure
+
+Tokens from enji-auth contain:
+
+```json
+{
+  "sub": "user@example.com",
+  "user_id": 123,
+  "type": "access",
+  "exp": 1706569200,
+  "rand_str": "uuid",
+  "roles": ["admin", "editor"],
+  "permissions": ["read", "write", "delete"]
+}
+```
+
+## Development
+
+### Install dependencies
+
+```bash
+pip install -e ".[dev]"
+```
+
+### Run tests
+
+```bash
+pytest
+```
+
+### Build package
+
+```bash
+python -m build
+```
+
+## License
+
+MIT
