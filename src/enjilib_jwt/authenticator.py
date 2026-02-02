@@ -68,16 +68,12 @@ class JWTAuthenticator:
             True if permission matches pattern
         """
         # If pattern starts with /, it's a regex pattern
-        if pattern.startswith("/"):
-            try:
-                regex_pattern = pattern[1:]  # Remove leading /
-                return bool(re.match(regex_pattern, permission))
-            except re.error:
-                # Invalid regex, skip
-                return False
-        else:
-            # Exact match
-            return permission == pattern
+        try:
+            regex_pattern = pattern
+            return bool(re.match(regex_pattern, permission))
+        except re.error:
+            # Invalid regex, skip
+            return False
 
     @staticmethod
     def _check_permission_list(
