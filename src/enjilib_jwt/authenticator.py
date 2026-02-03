@@ -70,7 +70,10 @@ class JWTAuthenticator:
         """
         # If pattern starts with /, it's a regex pattern
         try:
-            regex_pattern = pattern
+            if pattern.startswith("/"):
+                regex_pattern = pattern[1:]
+            else:
+                regex_pattern = pattern
             return bool(re.match(regex_pattern, permission))
         except re.error:
             # Invalid regex, skip
