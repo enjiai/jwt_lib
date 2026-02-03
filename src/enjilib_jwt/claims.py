@@ -1,4 +1,5 @@
 """JWT claims data class."""
+
 from dataclasses import dataclass
 
 
@@ -10,6 +11,7 @@ class JWTClaims:
     email: str
     roles: list[str]
     permissions: list[str]
+    employee_id: int | None = None
 
     @classmethod
     def from_payload(cls, payload: dict) -> "JWTClaims":
@@ -27,4 +29,5 @@ class JWTClaims:
             email=payload.get("sub"),
             roles=payload.get("roles", []),
             permissions=payload.get("permissions", []),
+            employee_id=payload.get("employee_id"),
         )

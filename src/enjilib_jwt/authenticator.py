@@ -1,4 +1,5 @@
 """JWT token authenticator."""
+
 import re
 from typing import Optional
 
@@ -76,9 +77,7 @@ class JWTAuthenticator:
             return False
 
     @staticmethod
-    def _check_permission_list(
-        permission: str, permission_list: list[str]
-    ) -> bool:
+    def _check_permission_list(permission: str, permission_list: list[str]) -> bool:
         """
         Check if permission matches any pattern in permission list.
 
@@ -173,9 +172,7 @@ class JWTAuthenticator:
         return JWTAuthenticator._check_permission_list(permission, claims.permissions)
 
     @staticmethod
-    def has_any_permission(
-        claims: JWTClaims, permissions: list[str]
-    ) -> bool:
+    def has_any_permission(claims: JWTClaims, permissions: list[str]) -> bool:
         """
         Check if user has any of the specified permissions.
 
@@ -192,9 +189,7 @@ class JWTAuthenticator:
         return False
 
     @staticmethod
-    def has_all_permissions(
-        claims: JWTClaims, permissions: list[str]
-    ) -> bool:
+    def has_all_permissions(claims: JWTClaims, permissions: list[str]) -> bool:
         """
         Check if user has all of the specified permissions.
 
