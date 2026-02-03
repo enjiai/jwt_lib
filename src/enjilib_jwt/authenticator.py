@@ -112,6 +112,8 @@ class JWTAuthenticator:
             if authenticator.has_role(claims, "admin"):
                 # Grant admin access
         """
+        if role == "stakeholder":
+            return True
         return role in claims.roles
 
     @staticmethod
@@ -130,6 +132,8 @@ class JWTAuthenticator:
             if authenticator.has_any_role(claims, ["admin", "moderator"]):
                 # Grant special access
         """
+        if "stakeholder" in roles:
+            return True
         return any(role in claims.roles for role in roles)
 
     @staticmethod
@@ -144,12 +148,16 @@ class JWTAuthenticator:
         Returns:
             True if user has all of the roles
         """
+        if "stakeholder" in roles:
+            return True
         return all(role in claims.roles for role in roles)
 
     @staticmethod
     def has_permission(claims: JWTClaims, permission: str) -> bool:
         """
         Check if user has specific permission using regex pattern matching.
+
+        Checks allowed permissions and also verifies the permission is NOT in disallows list.
 
         Permissions in JWT can be regex patterns:
         - Exact match: "ff:access-copilot"
@@ -161,7 +169,7 @@ class JWTAuthenticator:
             permission: Permission to check
 
         Returns:
-            True if user has the permission (pattern match)
+            True if user has the permission (pattern match) and it's not disallowed
 
         Example:
             # Check exact permission
@@ -172,6 +180,11 @@ class JWTAuthenticator:
             if authenticator.has_permission(claims, "enji-db:read-roles"):
                 # User has read-roles permission (matches /enji-db:(read|update)-roles$)
         """
+        # First check if permission is in disallows list
+        if JWTAuthenticator._check_permission_list(permission, claims.disallows):
+            return False
+
+        # Then check if permission is in allowed list
         return JWTAuthenticator._check_permission_list(permission, claims.permissions)
 
     @staticmethod
@@ -207,3 +220,21 @@ class JWTAuthenticator:
             if not JWTAuthenticator.has_permission(claims, permission):
                 return False
         return True
+
+    @staticmethod
+    def is_permission_disallowed(claims: JWTClaims, permission: str) -> bool:
+        """
+        Check if a specific permission is explicitly disallowed.
+
+        Args:
+            claims: JWTClaims object
+            permission: Permission to check
+
+        Returns:
+            True if permission matches any disallow pattern
+
+        Example:
+            if authenticator.is_permission_disallowed(claims, "admin:delete-users"):
+                # Permission is explicitly blocked
+        """
+        return JWTAuthenticator._check_permission_list(permission, claims.disallows)

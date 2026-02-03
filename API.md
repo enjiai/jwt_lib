@@ -18,6 +18,7 @@ Tokens issued by enji-auth contain the following claims:
     "service:action-resource",
     "/service:(action1|action2)-resource$"
   ],
+  "disallows": ["service:dangerous-action", "/service:(delete)-admin_only$"],
   "employee_id": 321
 }
 ```
@@ -33,6 +34,7 @@ Tokens issued by enji-auth contain the following claims:
 | `rand_str`    | string    | Random UUID for token uniqueness                                   |
 | `roles`       | list[str] | User roles (e.g., ["admin", "editor"])                             |
 | `permissions` | list[str] | User permissions (exact match or regex patterns)                   |
+| `disallows`   | list[str] | Explicitly disallowed permissions (exact match or regex patterns)  |
 | `employee_id` | int       | Employee ID from collector db                                      |
 
 ## Core Classes
@@ -49,7 +51,8 @@ class JWTClaims:
     user_id: int              # Special id from enji-auth (not employee_id)
     email: str                # User email (from "sub" claim)
     roles: list[str]          # User roles
-    permissions: list[str]    # User permissions
+    permissions: list[str]    # User permissions (allowed)
+    disallows: list[str]      # Explicitly disallowed permissions
     employee_id: int          # Employee id from collector db
 ```
 
@@ -125,11 +128,19 @@ if JWTAuthenticator.has_all_roles(claims, ["editor", "publisher"]):
 
 Check if user has specific permission using regex pattern matching.
 
+The method checks both allowed permissions and disallowed permissions. If a permission matches a disallow pattern, it returns `False` even if it matches an allow pattern.
+
 **Permission Format:**
 
 - Exact match: `"service:action-resource"`
 - Regex pattern: `/service:(action1|action2)-resource$/`
 - Wildcard: `/.*`
+
+**Permission Resolution Logic:**
+
+1. Check if permission matches any pattern in `disallows` → return `False` (blocked)
+2. Check if permission matches any pattern in `permissions` → return `True` (allowed)
+3. Otherwise → return `False`
 
 **Example:**
 
@@ -139,10 +150,17 @@ if JWTAuthenticator.has_permission(claims, "activity:read-activities"):
     # User can read activities
 
 # JWT permissions can be patterns that match multiple permissions
-# If JWT contains: "/activity:(read|write)-.*"
-# Then this returns True:
+# If JWT contains: "permissions": ["/activity:(read|write)-.*"]
+#            and: "disallows": ["activity:write-admin_settings"]
+# Then:
 if JWTAuthenticator.has_permission(claims, "activity:read-activities"):
-    # Matches the regex pattern in JWT
+    # True - matches allow pattern
+
+if JWTAuthenticator.has_permission(claims, "activity:write-admin_settings"):
+    # False - matches disallow pattern (takes precedence)
+
+if JWTAuthenticator.has_permission(claims, "activity:write-activities"):
+    # True - matches allow pattern, not in disallows
 ```
 
 ### has_any_permission(claims: JWTClaims, permissions: list[str]) -> bool
@@ -165,6 +183,18 @@ Check if user has all specified permissions.
 ```python
 if JWTAuthenticator.has_all_permissions(claims, ["user:read", "user:write"]):
     # Allow full user management
+```
+
+### is_permission_disallowed(claims: JWTClaims, permission: str) -> bool
+
+Check if a specific permission is explicitly disallowed.
+
+**Example:**
+
+```python
+if JWTAuthenticator.is_permission_disallowed(claims, "admin:delete-users"):
+    # Permission is explicitly blocked
+    raise HTTPException(status_code=403, detail="This action is blocked")
 ```
 
 ## FastAPI Integration Example
