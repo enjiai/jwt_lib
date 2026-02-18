@@ -11,13 +11,8 @@ class JWTClaims:
     email: str
     roles: list[str]
     permissions: list[str]
-    disallows: list[str] = None
+    disallows: list[str] = []
     employee_id: int | None = None
-
-    def __post_init__(self):
-        """Set default values for optional fields."""
-        if self.disallows is None:
-            self.disallows = []
 
     @classmethod
     def from_payload(cls, payload: dict) -> "JWTClaims":
