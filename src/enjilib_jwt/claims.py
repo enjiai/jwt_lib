@@ -1,6 +1,6 @@
 """JWT claims data class."""
 
-from dataclasses import dataclass
+from dataclasses import dataclass, field
 
 
 @dataclass
@@ -9,9 +9,9 @@ class JWTClaims:
 
     user_id: int
     email: str
-    roles: list[str]
-    permissions: list[str]
-    disallows: list[str] = []
+    roles: list[str] = field(default_factory=list)
+    permissions: list[str] = field(default_factory=list)
+    disallows: list[str] = field(default_factory=list)
     employee_id: int | None = None
 
     @classmethod
