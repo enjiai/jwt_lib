@@ -5,6 +5,7 @@ from typing import Optional
 
 import jwt
 
+from .cipher import decrypt_payload
 from .claims import JWTClaims
 
 
@@ -24,7 +25,7 @@ class JWTAuthenticator:
 
     def verify_and_extract(self, token: str) -> Optional[JWTClaims]:
         """
-        Verify JWT token signature and extract claims.
+        Verify JWT token signature, decrypt sensitive claims, and extract them.
 
         Args:
             token: JWT token string
@@ -40,11 +41,16 @@ class JWTAuthenticator:
                 print(f"Roles: {claims.roles}")
         """
         try:
-            payload = jwt.decode(
+            public = jwt.decode(
                 token,
                 self.secret_key,
                 algorithms=[self.algorithm],
             )
+            if "enc" not in public:
+                return None
+            sensitive = decrypt_payload(public["enc"], self.secret_key)
+            payload = {**public, **sensitive}
+            payload.pop("enc", None)
             return JWTClaims.from_payload(payload)
         except jwt.InvalidTokenError:
             return None
