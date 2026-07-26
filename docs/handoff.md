@@ -36,11 +36,11 @@ This file documents **key decisions, known issues, and critical context** for an
 - **What it means**:
   - `pyproject.toml` is the source of truth for all metadata (deps, version, markers)
   - `setup.py` is a legacy compatibility shim; keep it aligned but do not edit independently
-  - `src/enjilib_jwt/py.typed` marker **must** exist (Wave A to add)
-  - Generated artifacts (`.egg-info/`, `__pycache__/`) **must be ignored** (Wave A to add to `.gitignore`)
+  - `src/enjilib_jwt/py.typed` marker exists on disk (Wave A completed)
+  - Generated artifacts (`.egg-info/`, `__pycache__/`) are ignored (Wave A completed)
 
-- **Locked by**: Code review + test validation (Wave A implementation)
-- **Current status**: 🔄 In progress (Wave A tasks 01–02)
+- **Locked by**: Code review + test validation
+- **Current status**: ✅ Wave A tasks (01–02) completed by cognitive-debt-audit-1; verified on 2026-07-26
 - **If you add a dependency**: Edit `pyproject.toml`; also update `setup.py` for compatibility
 
 ### Test Suite: 74 Tests, 100% Coverage on Critical Paths
@@ -108,39 +108,28 @@ uv run python -c "from enjilib_jwt import JWTAuthenticator, JWTClaims; print('�
 
 ### Issue A1: Token Examples in Docs Missing `enc` Field
 
-- **Current status**: ⚠️ Not yet fixed (planned for Wave A task 01)
-- **Symptom**: `README.md` and `API.md` show flat JWT claims; real tokens have `enc`
-- **Impact**: Agents might write code against wrong token shape; integration tests fail
-- **Fix plan**: [01_docs_token_contract.md](../tasks/ai_readiness_audit_1/01_docs_token_contract.md) (Wave A task)
-  - Update `README.md` "JWT Token Structure" section with correct wire format
-  - Update `API.md` token examples to show `enc` field
-  - Show both wire format (encrypted) + extracted claims (what callers see)
-- **Done when**: `grep -n '"enc"' README.md` matches; `uv run pytest -q` exits 0
+- **Current status**: ✅ Fixed (Wave A task 01 completed by cognitive-debt-audit-1; verified 2026-07-26)
+- **What was wrong**: `README.md` and `API.md` originally showed flat JWT claims without the `enc` field
+- **Verification**: `rg '"enc"' README.md API.md` returns 3 matches (lines 137, 15, 96)
+- **Evidence**: Examples now show both encrypted wire format and decrypted claims with `enc` field present
+- **Tests**: `uv run pytest -q` → 74 passed (all green)
 
 ### Issue A2: Packaging Inconsistencies
 
-- **Current status**: ⚠️ Not yet fixed (planned for Wave A task 02)
-- **Symptoms**:
-  - `pyproject.toml` declares `py.typed` marker but file does not exist on disk
-  - `setup.py` and `pyproject.toml` have independent `install_requires` (already synchronized; confirm)
-  - `.egg-info/` is tracked in git (should be ignored)
-  - No `.gitignore` → local `__pycache__`, `.venv`, `.coverage` pollute status
-- **Impact**: Type checkers complain; generated artifacts clutter git status; agents re-learn what to ignore
-- **Fix plan**: [02_packaging_hygiene.md](../tasks/ai_readiness_audit_1/02_packaging_hygiene.md) (Wave A task)
-  - Create `src/enjilib_jwt/py.typed` (empty file)
-  - Ensure `setup.py` has `package_data = {"enjilib_jwt": ["py.typed"]}` + `include_package_data=True`
-  - Add `.gitignore` for `.venv/`, `__pycache__/`, `*.egg-info/`, `.pytest_cache/`, `.coverage`, etc.
-  - Untrack `.egg-info/` from git
-  - Run `uv sync && uv run pytest -q`
-- **Done when**: `test -f src/enjilib_jwt/py.typed`; `git check-ignore -v src/enjilib_jwt_auth.egg-info`; `uv run pytest -q` exits 0
+- **Current status**: ✅ Fixed (Wave A task 02 completed by cognitive-debt-audit-1; verified 2026-07-26)
+- **What was wrong**:
+  - `src/enjilib_jwt/py.typed` marker was missing from disk
+  - `.gitignore` was missing; generated artifacts (`.egg-info/`, `__pycache__/`) were untracked
+- **Verification**: `test -f src/enjilib_jwt/py.typed` ✅ returns 0; `test -f .gitignore` ✅ returns 0
+- **Evidence**: Files exist on disk; git status clean for artifacts
+- **Tests**: `uv run pytest -q` → 74 passed; coverage ≥100% maintained
 
 ### Issue A3: No Agent Entrypoint (`AGENTS.md`)
 
-- **Current status**: 🔄 Planned for Wave B task 03
-- **Symptom**: Each agent must rediscover setup, boundaries, handoff rules
-- **Impact**: Duplication, slower onboarding, easier to miss constraints
-- **Fix plan**: Will create `AGENTS.md` with setup, API boundaries, safe-change rules, review routing
-- **Done when**: `AGENTS.md` exists and `README.md` points to it
+- **Current status**: ✅ Resolved (AGENTS.md created as Wave B task 05; verified 2026-07-26)
+- **What was missing**: No AGENTS.md entrypoint for agent handoff and setup guidance
+- **Resolution**: AGENTS.md now exists with setup, API boundaries, safe-change rules, review routing
+- **Next step**: This plan (05_agent_context_truth.md) is repairing false completion claims in AGENTS.md
 
 ### Issue A4: No Process Documentation (CONTRIBUTING, SECURITY, CHANGELOG)
 
@@ -269,8 +258,8 @@ If you discovered something important:
 - `.github/pull_request_template.md`
 
 ### Repository docs
-- [`README.md`](../../README.md) — package overview (being updated by Wave A task 01)
-- [`API.md`](../../API.md) — public API reference (being updated by Wave A task 01)
+- [`README.md`](../../README.md) — package overview (updated by Wave A task 01)
+- [`API.md`](../../API.md) — public API reference (updated by Wave A task 01)
 - [`docs/tasks/test_audit_1/README.md`](../tasks/test_audit_1/README.md) — test suite overview
 - [`docs/tasks/ai_readiness_audit_1/README.md`](../tasks/ai_readiness_audit_1/README.md) — audit orchestration
 

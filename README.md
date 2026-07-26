@@ -10,14 +10,14 @@ Add to your `pyproject.toml`:
 
 ```toml
 dependencies = [
-    "enjilib-jwt-auth @ git+https://github.com/your-org/enji-agent.git@main#subdirectory=be/shared/enjilib-jwt-auth",
+    "enjilib-jwt-auth @ git+https://github.com/enjiai/jwt_lib.git@main",
 ]
 ```
 
 Or with pip:
 
 ```bash
-pip install git+https://github.com/your-org/enji-agent.git@main#subdirectory=be/shared/enjilib-jwt-auth
+pip install git+https://github.com/enjiai/jwt_lib.git@main
 ```
 
 ## Usage
@@ -126,19 +126,48 @@ async def delete_file(
 
 ## JWT Token Structure
 
-Tokens from enji-auth contain:
+### Wire Format
+
+Tokens from enji-auth are signed JWT with public claims and encrypted sensitive claims:
+
+```json
+{
+  "exp": 1706569200,
+  "type": "access",
+  "enc": "<base64url(nonce || aesgcm(zlib(sensitive_claims)))>"
+}
+```
+
+Only `exp` and `type` are publicly visible. The `enc` claim contains encrypted and compressed sensitive claims (user identity, roles, permissions).
+
+### Extracted Claims
+
+After `verify_and_extract()` decrypts and decompresses the `enc` blob, callers see these fields in `JWTClaims`:
 
 ```json
 {
   "sub": "user@example.com",
   "user_id": 123,
+  "email": "user@example.com",
   "type": "access",
   "exp": 1706569200,
   "rand_str": "uuid",
   "roles": ["admin", "editor"],
-  "permissions": ["read", "write", "delete"]
+  "permissions": ["read", "write", "delete"],
+  "disallows": [],
+  "employee_id": 321
 }
 ```
+
+> **Note:** Identity fields (`sub`, `user_id`, `roles`, `permissions`, `disallows`, `employee_id`) are **encrypted in transit** and only available after successful decryption. See [API.md](API.md) for complete method signatures and permission matching semantics.
+
+### Stakeholder Bypass
+
+All role helpers (`has_role`, `has_any_role`, `has_all_roles`) recognize `"stakeholder"` as a special bypass role that grants access unconditionally, even if the user has no actual roles. This is an intentional escape hatch for internal use.
+
+## External Contracts
+
+For details on the token encryption contract with enji-auth issuer and Collector employee ID integration, see [EXTERNAL_CONTRACTS.md](docs/EXTERNAL_CONTRACTS.md).
 
 ## Development
 

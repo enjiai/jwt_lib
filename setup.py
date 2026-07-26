@@ -20,6 +20,7 @@ setup(
         "dev": [
             "pytest>=7.0",
             "pytest-asyncio>=0.21.0",
+            "pytest-cov>=4.0",
         ],
     },
     classifiers=[
