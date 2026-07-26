@@ -8,9 +8,11 @@ Keywords: jwt,authentication,microservices
 Requires-Python: >=3.9
 Description-Content-Type: text/markdown
 Requires-Dist: pyjwt>=2.8.0
+Requires-Dist: cryptography>=44.0.1
 Provides-Extra: dev
 Requires-Dist: pytest>=7.0; extra == "dev"
 Requires-Dist: pytest-asyncio>=0.21.0; extra == "dev"
+Requires-Dist: pytest-cov>=4.0; extra == "dev"
 Dynamic: requires-python
 
 # enjilib-jwt-auth
@@ -160,13 +162,19 @@ Tokens from enji-auth contain:
 ### Install dependencies
 
 ```bash
-pip install -e ".[dev]"
+uv sync --all-extras
 ```
 
 ### Run tests
 
 ```bash
-pytest
+uv run pytest -v
+```
+
+### Run tests with coverage
+
+```bash
+uv run pytest --cov=enjilib_jwt --cov-report=term-missing
 ```
 
 ### Build package

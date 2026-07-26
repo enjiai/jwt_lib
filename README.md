@@ -145,13 +145,19 @@ Tokens from enji-auth contain:
 ### Install dependencies
 
 ```bash
-pip install -e ".[dev]"
+uv sync --all-extras
 ```
 
 ### Run tests
 
 ```bash
-pytest
+uv run pytest -v
+```
+
+### Run tests with coverage
+
+```bash
+uv run pytest --cov=enjilib_jwt --cov-report=term-missing
 ```
 
 ### Build package

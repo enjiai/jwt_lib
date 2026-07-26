@@ -14,6 +14,7 @@ setup(
     python_requires=">=3.9",
     install_requires=[
         "pyjwt>=2.8.0",
+        "cryptography>=44.0.1",
     ],
     extras_require={
         "dev": [
