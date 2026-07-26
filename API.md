@@ -4,7 +4,23 @@ JWT authentication library for Enji microservices. Provides local token verifica
 
 ## Token Structure
 
-Tokens issued by enji-auth contain the following claims:
+### Wire Format
+
+Tokens issued by enji-auth are JWT with public claims and encrypted sensitive claims:
+
+```json
+{
+  "exp": 1706569200,
+  "type": "access",
+  "enc": "<base64url(nonce || aesgcm(zlib(sensitive_claims)))>"
+}
+```
+
+Only `exp` and `type` are directly readable in the JWT. The `enc` claim contains AES-GCM encrypted sensitive data (compressed with zlib, using HKDF-SHA256 key derivation with info `b"enji-jwt-payload-encryption"`).
+
+### Extracted Claims Structure
+
+After `verify_and_extract()` decrypts the `enc` blob, callers receive a `JWTClaims` object with:
 
 ```json
 {
@@ -27,15 +43,15 @@ Tokens issued by enji-auth contain the following claims:
 
 | Field         | Type      | Description                                                        |
 | ------------- | --------- | ------------------------------------------------------------------ |
-| `sub`         | string    | User email address                                                 |
-| `user_id`     | int       | Unique user ID (NOT AN employee ID, DONT USE IT AS AN employee_id) |
-| `type`        | string    | Token type (e.g., "access")                                        |
-| `exp`         | int       | Unix timestamp of expiration                                       |
-| `rand_str`    | string    | Random UUID for token uniqueness                                   |
-| `roles`       | list[str] | User roles (e.g., ["admin", "editor"])                             |
-| `permissions` | list[str] | User permissions (exact match or regex patterns)                   |
-| `disallows`   | list[str] | Explicitly disallowed permissions (exact match or regex patterns)  |
-| `employee_id` | int       | Employee ID from collector db                                      |
+| `sub`         | string    | User email address (from encrypted payload)                         |
+| `user_id`     | int       | Unique user ID from enji-auth (NOT the same as `employee_id`)      |
+| `type`        | string    | Token type (e.g., "access"); public claim                          |
+| `exp`         | int       | Unix timestamp of expiration; public claim                         |
+| `rand_str`    | string    | Random UUID for token uniqueness (encrypted)                       |
+| `roles`       | list[str] | User roles (e.g., ["admin", "editor"]; encrypted)                  |
+| `permissions` | list[str] | User permissions (exact match or regex patterns; encrypted)        |
+| `disallows`   | list[str] | Explicitly disallowed permissions (exact match or regex; encrypted) |
+| `employee_id` | int       | Employee ID from collector database (encrypted)                    |
 
 ## Core Classes
 
@@ -48,12 +64,12 @@ from enjilib_jwt import JWTClaims
 
 @dataclass
 class JWTClaims:
-    user_id: int              # Special id from enji-auth (not employee_id)
+    user_id: int              # Unique user ID from enji-auth (not employee_id)
     email: str                # User email (from "sub" claim)
     roles: list[str]          # User roles
-    permissions: list[str]    # User permissions (allowed)
-    disallows: list[str]      # Explicitly disallowed permissions
-    employee_id: int          # Employee id from collector db
+    permissions: list[str]    # User permissions (allowed patterns)
+    disallows: list[str]      # Explicitly disallowed permission patterns
+    employee_id: int | None   # Employee ID from collector database
 ```
 
 ### JWTAuthenticator
@@ -75,7 +91,14 @@ authenticator = JWTAuthenticator(
 
 Verifies JWT signature and extracts claims.
 
-**Returns:** `JWTClaims` if valid, `None` if invalid
+**Behavior:**
+1. Decodes JWT public claims (requires `exp` and `type`)
+2. Returns `None` if `"enc"` is missing or invalid (no fallback to flat claims)
+3. Decrypts sensitive payload from `enc` blob using HKDF-SHA256 derived key and AES-GCM
+4. Merges public and sensitive claims, removes `enc` before returning
+5. Returns `None` on any error (invalid signature, decryption failure, or JSON parse error)
+
+**Returns:** `JWTClaims` if valid and successfully decrypted, `None` if invalid
 
 **Example:**
 
@@ -95,52 +118,73 @@ else:
 
 Check if user has a specific role.
 
+**Special Behavior:** If `role == "stakeholder"`, always returns `True` (bypass mechanism). This is an intentional escape hatch for internal use, regardless of the user's actual roles.
+
 **Example:**
 
 ```python
 if JWTAuthenticator.has_role(claims, "admin"):
     # Grant admin access
+
+if JWTAuthenticator.has_role(claims, "stakeholder"):
+    # Always True (bypass granted)
+    pass
 ```
 
 ### has_any_role(claims: JWTClaims, roles: list[str]) -> bool
 
 Check if user has any of the specified roles.
 
+**Special Behavior:** If `"stakeholder"` is in the roles list, always returns `True` (bypass mechanism).
+
 **Example:**
 
 ```python
 if JWTAuthenticator.has_any_role(claims, ["admin", "moderator"]):
     # Grant special access
+
+if JWTAuthenticator.has_any_role(claims, ["stakeholder", "editor"]):
+    # Always True because stakeholder is in the list
+    pass
 ```
 
 ### has_all_roles(claims: JWTClaims, roles: list[str]) -> bool
 
 Check if user has all specified roles.
 
+**Special Behavior:** If `"stakeholder"` is in the roles list, always returns `True` (bypass mechanism).
+
 **Example:**
 
 ```python
 if JWTAuthenticator.has_all_roles(claims, ["editor", "publisher"]):
     # Both roles required
+    pass
+
+if JWTAuthenticator.has_all_roles(claims, ["stakeholder", "anyone"]):
+    # Always True because stakeholder is in the list
+    pass
 ```
 
 ### has_permission(claims: JWTClaims, permission: str) -> bool
 
 Check if user has specific permission using regex pattern matching.
 
-The method checks both allowed permissions and disallowed permissions. If a permission matches a disallow pattern, it returns `False` even if it matches an allow pattern.
+The method checks both allowed permissions and disallowed permissions. **Disallows take precedence:** if a permission matches any pattern in `disallows`, it returns `False` even if it matches an allow pattern.
 
 **Permission Format:**
 
-- Exact match: `"service:action-resource"`
-- Regex pattern: `/service:(action1|action2)-resource$/`
-- Wildcard: `/.*`
+- Exact match: `"service:action-resource"` (matched by `re.match`, so prefix match)
+- Regex pattern: `/service:(action1|action2)-resource$/` (leading `/` stripped, then matched with `re.match`)
+- Wildcard: `/.*` (matches any permission starting with any characters)
 
 **Permission Resolution Logic:**
 
 1. Check if permission matches any pattern in `disallows` → return `False` (blocked)
 2. Check if permission matches any pattern in `permissions` → return `True` (allowed)
 3. Otherwise → return `False`
+
+Note: All patterns are matched using `re.match`, which matches from the beginning of the string (prefix semantics).
 
 **Example:**
 
@@ -157,7 +201,7 @@ if JWTAuthenticator.has_permission(claims, "activity:read-activities"):
     # True - matches allow pattern
 
 if JWTAuthenticator.has_permission(claims, "activity:write-admin_settings"):
-    # False - matches disallow pattern (takes precedence)
+    # False - matches disallow pattern (disallow takes precedence)
 
 if JWTAuthenticator.has_permission(claims, "activity:write-activities"):
     # True - matches allow pattern, not in disallows
@@ -246,10 +290,11 @@ async def create_user(
 
 ## Important Notes
 
-1. **Token Verification is Local** - No HTTP calls to enji-auth needed
-2. **Permission Matching** - Uses regex patterns; permissions in JWT can be patterns that match multiple specific permissions
-3. **Claims Structure** - Always check that `verify_and_extract()` returns non-None before accessing claims
-4. **Security** - Keep `secret_key` secure and never expose it
+1. **Token Verification is Local** - No HTTP calls to enji-auth needed. Decryption uses the same secret key that signed the JWT.
+2. **Permission Matching** - Uses `re.match` for prefix-based regex matching. Permissions in JWT can be patterns that match multiple specific permissions.
+3. **Claims Structure** - Always check that `verify_and_extract()` returns non-None before accessing claims.
+4. **Security** - Keep `secret_key` secure and never expose it. The same key is used for both JWT signing and sensitive claim encryption.
+5. **Disallow Precedence** - Disallow list takes precedence over allow list. A permission matching any disallow pattern will be denied even if it matches an allow pattern.
 
 ## Common Patterns
 
@@ -258,9 +303,10 @@ async def create_user(
 ```python
 claims = authenticator.verify_and_extract(token)
 if claims:
-    user_id = claims.user_id  # Employee ID
+    user_id = claims.user_id  # Unique user ID (not employee_id)
     email = claims.email
     roles = claims.roles
+    employee_id = claims.employee_id  # Employee ID from collector database
 ```
 
 ### Check if user can access resource
@@ -282,3 +328,23 @@ permission = f"{service}:{action}-{resource}"
 if JWTAuthenticator.has_permission(claims, permission):
     # Check passed
 ```
+
+### Regex permission patterns
+
+```python
+# JWT can contain regex patterns for permissions and disallows.
+# Pattern syntax: if pattern starts with /, it's a regex; otherwise exact match.
+# Matching uses re.match (prefix matching from start of string).
+
+# Example: JWT has permission "/enji-db:(read|write)-.*"
+# This matches "enji-db:read-roles", "enji-db:write-users", etc.
+
+# To check if a user can read from any table:
+if JWTAuthenticator.has_permission(claims, "enji-db:read-users"):
+    # True if JWT permissions include the above pattern
+    pass
+```
+
+## See Also
+
+For details on the external contract with enji-auth issuer and Collector employee ID integration, see [EXTERNAL_CONTRACTS.md](./docs/EXTERNAL_CONTRACTS.md).

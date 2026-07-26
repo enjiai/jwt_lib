@@ -106,7 +106,9 @@ When adding new features or tests:
 ## Related Decisions
 
 - [002: Packaging source of truth](./002_packaging_source_of_truth.md) — `pyproject.toml` as canonical metadata
-- (Future) ADR for stakeholder role bypass semantics
+- [003: Stakeholder role bypass](./003_stakeholder_role_bypass.md) — why `"stakeholder"` role bypasses all checks
+- [EXTERNAL_CONTRACTS.md](../EXTERNAL_CONTRACTS.md) — External systems boundaries (enji-auth issuer, Collector employee_id integration)
+
 
 ---
 

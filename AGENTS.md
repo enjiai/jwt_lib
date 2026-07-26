@@ -73,16 +73,23 @@ from enjilib_jwt import JWTAuthenticator, JWTClaims
 
 ---
 
-## 4. Known Drift & Wave A Fix Plans
+## 4. Wave A Remediation — Completed by Cognitive-Debt Audit
 
-The AI Readiness Audit (July 2026) identified **documentation and packaging misalignment**. Two fix plans were created; both are COMPLETE in this repository as fix-plan files.
+The cognitive-debt audit identified documentation and packaging drift. **Wave A fixes (tasks 01 & 02) were completed** as part of the cognitive-debt-audit-1 remediation track.
 
-| Wave A Task | File | Status | What agents need to know |
-|-------------|------|--------|-------------------------|
-| **01_TOKEN_CONTRACT_FIX** | `01_TOKEN_CONTRACT_FIX_PLAN.txt` | ✅ Completed | `README.md` and `API.md` showed tokens WITHOUT the required `enc` field. This is **now fixed**. Token examples now correctly show `"enc": "base64url-encrypted-payload"` in JWT, and decrypted payload inside. |
-| **02_PACKAGING_HYGIENE_FIX** | `02_PACKAGING_HYGIENE_FIX_PLAN.txt` | ✅ Completed | `pyproject.toml` and `setup.py` had inconsistencies: missing `pytest-cov`, missing `py.typed` marker, missing classifiers. **Now fixed**: py.typed file created, pytest-cov added, classifiers synced. |
+**Evidence (verified 2026-07-26)**:
 
-**Bottom line for agents**: Read these plans if you are changing token examples, packaging, or docs. The current code and docs are now aligned.
+| Item | Verification | Status |
+|------|--------------|--------|
+| **Token `enc` field in docs** | `rg '"enc"' README.md API.md` (lines 137, 15, 96) | ✅ Docs now show correct `"enc"` field in token structure |
+| **`py.typed` marker** | `test -f src/enjilib_jwt/py.typed` | ✅ File exists |
+| **`.gitignore` for artifacts** | `test -f .gitignore` | ✅ File exists, excludes `__pycache__`, `.egg-info`, etc. |
+| **Packaging consistency** | `pyproject.toml` (canonical) and `setup.py` (legacy compat) aligned | ✅ Both declare cryptography + dependencies |
+
+**What agents need to know**:
+- Token examples in `README.md` and `API.md` correctly show the `enc` field with both encrypted wire format and decrypted claims
+- Packaging is consistent; `pyproject.toml` is canonical
+- For historical context and decisions, see `docs/tasks/cognitive_dept_audit_1/README.md`
 
 ---
 
@@ -298,7 +305,7 @@ See `/Users/13910n/work/projects/enji/agent_enji/AGENTS.md` for the full service
 
 **For questions not answered here**:
 - **Token structure**: See API.md and authenticator.py docstrings
-- **Installation**: See README.md (now fixed per Wave A 02)
+- **Installation**: See README.md (Wave A 02 completed)
 - **Packaging**: See pyproject.toml and §4 (Wave A 02 fixes)
 - **Test strategy**: See pytest.ini and tests/ folder
 - **Enji architecture**: See `/Users/13910n/work/projects/enji/agent_enji/AGENTS.md`
