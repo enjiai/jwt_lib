@@ -126,14 +126,28 @@ The cognitive-debt audit identified documentation and packaging drift. **Wave A 
 
 ## 6. Setup and Verification
 
-### Install dependencies (required before any work)
+### Quick local gate (recommended)
 
-Using **uv** (recommended, uses `uv.lock`):
+Use the **Makefile** for reproducible verification — this is your local quality gate:
 
 ```bash
 cd /Users/13910n/work/projects/enji/agent_enji/be/shared/enjilib-jwt-auth
-uv sync
+make check      # Full gate: sync + test + typecheck + build
+make test       # Pytest with coverage (100% required)
 ```
+
+**What is this?** The same commands CI runs automatically on every PR via `.github/workflows/test.yml`. Running this locally ensures no CI surprises.
+
+### Install dependencies (required before any work)
+
+Using **uv** (recommended, uses `uv.lock` for CI parity):
+
+```bash
+cd /Users/13910n/work/projects/enji/agent_enji/be/shared/enjilib-jwt-auth
+uv sync --frozen --all-extras
+```
+
+This uses the locked dependency set, ensuring identical behavior to CI.
 
 Or using **pip** (editable install):
 
@@ -165,14 +179,14 @@ python -m pytest tests/ -v
 
 ### Build package (before PR)
 
-Using **uv**:
+Using **uv** (recommended):
 
 ```bash
 cd /Users/13910n/work/projects/enji/agent_enji/be/shared/enjilib-jwt-auth
 uv build
 ```
 
-Or using Python:
+Or using Python (`python -m build` requires the `build` package):
 
 ```bash
 cd /Users/13910n/work/projects/enji/agent_enji/be/shared/enjilib-jwt-auth
@@ -181,14 +195,24 @@ python -m build
 
 **Expected output**: `dist/enjilib_jwt_auth-0.1.0-py3-none-any.whl` and `enjilib_jwt_auth-0.1.0.tar.gz` created, no warnings.
 
-### Type checking (optional but recommended)
+### Type checking (included in `make check`)
+
+The Makefile includes mypy as part of the full gate:
 
 ```bash
 cd /Users/13910n/work/projects/enji/agent_enji/be/shared/enjilib-jwt-auth
-uv run mypy src/enjilib_jwt --strict
+make typecheck  # Or: uv run mypy src/enjilib_jwt --strict
 ```
 
 **Expected**: All type checks pass (the library is PEP 561 compliant with inline type hints).
+
+### CI/CD Workflow
+
+The repository has a GitHub Actions workflow (`.github/workflows/test.yml`) that runs automatically on:
+- **Every push** to `main` and `staging`
+- **Every pull request**
+
+The workflow runs the exact same quality gate: `pytest` → `mypy` → `uv build`. You can monitor progress on your PR or commit page.
 
 ---
 

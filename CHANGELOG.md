@@ -23,6 +23,7 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 - Full async support via standard `async def` functions
 - Type hints on all public APIs
 - 100% test coverage (pytest with coverage enforcement)
+- **CI/CD Gate**: GitHub Actions workflow (`.github/workflows/test.yml`) for automated testing, type checking, and package building
 
 ### Changed
 - N/A (initial release)
@@ -83,6 +84,59 @@ These are example entries showing the changelog format. Remove or adapt as neede
 
 ---
 
+## Release Process
+
+### Automated Publishing (CI/CD)
+
+The repository includes a **tag-triggered GitHub Actions workflow** (`.github/workflows/release.yml`) that automates testing and publishing to PyPI.
+
+**How it works:**
+
+1. Cut a release locally:
+   - Update `[Unreleased]` section in `CHANGELOG.md` → `[X.Y.Z] - YYYY-MM-DD`
+   - Update `version = "X.Y.Z"` in `pyproject.toml`
+   - Commit: `git commit -am "Release X.Y.Z"`
+
+2. Create and push a version tag:
+   ```bash
+   git tag -a vX.Y.Z -m "Release X.Y.Z"
+   git push origin vX.Y.Z
+   ```
+
+3. GitHub Actions automatically:
+   - Checks out the tag
+   - Installs dependencies (`uv sync --frozen --all-extras`)
+   - Runs full test suite (`pytest`)
+   - Builds the package (`uv build`)
+   - Publishes to PyPI using **trusted publishing (OIDC)**
+
+**Trusted Publishing (OIDC):**
+
+This workflow uses PyPI's trusted publishing feature, which allows GitHub Actions to authenticate without storing long-lived API tokens. The following one-time admin setup is required:
+
+- Create a PyPI project for `enjiai/jwt_lib` (if not already exists)
+- In PyPI project settings → Trusted publishers → add a new publisher:
+  - **Publisher type**: GitHub Actions
+  - **Repository**: `enjiai/jwt_lib`
+  - **Workflow**: `.github/workflows/release.yml`
+  - **Environment name**: `release`
+- In the GitHub repository, create an `environment: release` and configure branch protection rules if desired
+
+Once configured, releases are fully automated: **tag push → tests → publish**.
+
+### Manual Publishing (Legacy)
+
+If needed for troubleshooting or special cases:
+
+```bash
+uv build
+twine upload dist/*
+```
+
+Requires `TWINE_USERNAME` and `TWINE_PASSWORD` (or `.pypirc`) to be configured locally.
+
+---
+
 ## Unreleased Versioning Guide
 
 When ready to release, follow these steps:
@@ -106,12 +160,7 @@ When ready to release, follow these steps:
    git tag -a vX.Y.Z -m "Release X.Y.Z"
    git push origin vX.Y.Z
    ```
-
-5. **Publish to PyPI**:
-   ```bash
-   python -m build
-   twine upload dist/*
-   ```
+   The release workflow will automatically build and publish to PyPI.
 
 ---
 

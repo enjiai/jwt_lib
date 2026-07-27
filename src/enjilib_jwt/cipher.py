@@ -3,6 +3,7 @@
 import base64
 import json
 import zlib
+from typing import Any
 
 from cryptography.hazmat.primitives import hashes
 from cryptography.hazmat.primitives.ciphers.aead import AESGCM
@@ -20,9 +21,9 @@ def _derive_key(secret: str) -> bytes:
     ).derive(secret.encode())
 
 
-def decrypt_payload(token: str, secret: str) -> dict:
+def decrypt_payload(token: str, secret: str) -> dict[str, Any]:
     """Decrypt and decompress a base64url string back to a dict of JWT claims."""
     raw = base64.urlsafe_b64decode(token)
     nonce, ciphertext = raw[:_NONCE_SIZE], raw[_NONCE_SIZE:]
     plaintext = AESGCM(_derive_key(secret)).decrypt(nonce, ciphertext, None)
-    return json.loads(zlib.decompress(plaintext))
+    return json.loads(zlib.decompress(plaintext))  # type: ignore[no-any-return]
