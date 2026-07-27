@@ -171,7 +171,21 @@ For details on the token encryption contract with enji-auth issuer and Collector
 
 ## Development
 
-### Install dependencies
+### Quick start
+
+Use the local gate Makefile for reproducible verification:
+
+```bash
+make check      # Full local gate: sync + test + typecheck + build
+make test       # Run pytest with coverage (must be 100%)
+make sync       # Sync dependencies with uv
+make build      # Build wheel and sdist
+make typecheck  # Run mypy type checker
+```
+
+### Manual setup (without Makefile)
+
+Install dependencies:
 
 ```bash
 uv sync --all-extras

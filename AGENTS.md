@@ -126,6 +126,16 @@ The cognitive-debt audit identified documentation and packaging drift. **Wave A 
 
 ## 6. Setup and Verification
 
+### Quick local gate (recommended)
+
+Use the **Makefile** for reproducible verification:
+
+```bash
+cd /Users/13910n/work/projects/enji/agent_enji/be/shared/enjilib-jwt-auth
+make check      # Full gate: sync + test + typecheck + build
+make test       # Pytest with coverage (100% required)
+```
+
 ### Install dependencies (required before any work)
 
 Using **uv** (recommended, uses `uv.lock`):
