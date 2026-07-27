@@ -1,21 +1,22 @@
 """JWT claims data class."""
 
 from dataclasses import dataclass, field
+from typing import Any
 
 
 @dataclass
 class JWTClaims:
     """JWT Claims extracted from token issued by enji-auth."""
 
-    user_id: int
-    email: str
+    user_id: int | None
+    email: str | None
     roles: list[str] = field(default_factory=list)
     permissions: list[str] = field(default_factory=list)
     disallows: list[str] = field(default_factory=list)
     employee_id: int | None = None
 
     @classmethod
-    def from_payload(cls, payload: dict) -> "JWTClaims":
+    def from_payload(cls, payload: dict[str, Any]) -> "JWTClaims":
         """
         Create JWTClaims from JWT payload dict.
 

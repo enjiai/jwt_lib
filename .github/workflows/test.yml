@@ -1,0 +1,26 @@
+name: test
+
+on:
+  push:
+    branches: [main, staging]
+  pull_request:
+
+jobs:
+  quality:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: astral-sh/setup-uv@v4
+        with:
+          enable-cache: true
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+      - name: Install
+        run: uv sync --frozen --all-extras
+      - name: Test with coverage
+        run: uv run pytest -v
+      - name: Typecheck
+        run: uv run mypy src/enjilib_jwt --strict
+      - name: Build package
+        run: uv build
