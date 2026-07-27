@@ -17,36 +17,39 @@ Thank you for your interest in contributing to enjilib-jwt-auth! This library is
    cd enjilib-jwt-auth
    ```
 
-2. **Activate the virtual environment**:
+2. **Install dependencies with uv** (ensures CI parity):
+   ```bash
+   uv sync --frozen --all-extras
+   ```
+   
+   This command:
+   - Uses `uv.lock` for reproducible builds (matches CI workflow)
+   - Installs all development dependencies
+   - Ensures you're testing the exact same versions as GitHub Actions
+
+3. **Activate the virtual environment** (if not using Makefile):
    ```bash
    source .venv/bin/activate  # On Windows: .venv\Scripts\activate
    ```
 
-3. **Install dependencies in development mode**:
-   ```bash
-   # Using uv (recommended)
-   uv sync --all-extras
-   
-   # Or using pip
-   pip install -e ".[dev]"
-   ```
+**Note**: If you prefer not to use Makefile, you can run uv commands directly. The Makefile is provided for convenience; all tasks (`sync`, `test`, `typecheck`, `build`, `check`) are reproducible via uv.
 
 ## Running Tests
 
 All contributions must include test coverage. Token verification is security-critical.
 
+Use the **local quality gate** (Makefile) for reproducible verification:
+
 ```bash
-# Run all tests
-pytest tests/
+# Full local gate: sync + test + typecheck + build
+make check
 
-# Run with coverage report
-pytest tests/ --cov=enjilib_jwt --cov-report=term-missing
+# Or test only (with coverage)
+make test
 
-# Run specific test file
-pytest tests/test_authenticator.py -v
-
-# Run tests matching a pattern
-pytest -k "verify" -v
+# Equivalent using uv directly
+uv run pytest -v
+uv run pytest --cov=enjilib_jwt --cov-report=term-missing
 ```
 
 **Coverage Requirement**: The project enforces 100% code coverage. All PRs touching token verification, encryption, or authorization logic must maintain this threshold.
@@ -115,12 +118,13 @@ When you open a PR, use the [pull request template](./.github/pull_request_templ
 
 Your PR must satisfy:
 
-- [ ] All tests pass locally: `pytest tests/` ✅
-- [ ] Coverage maintained at 100%: `pytest --cov=enjilib_jwt --cov-fail-under=100` ✅
+- [ ] All tests pass locally: `make test` ✅
+- [ ] Coverage maintained at 100%: verified by `make test`
 - [ ] Code follows project style guide (PEP 8, type hints, docstrings)
 - [ ] PR description filled out completely (use the template)
 - [ ] If token-related: token contract impact documented and tested
 - [ ] If packaging-related: maintainer approval requested
+- [ ] GitHub Actions CI workflow passes: watch the automated `test` job on your PR
 
 ## Review Process
 
@@ -134,12 +138,16 @@ PRs are reviewed by the Enji maintainers:
 
 A PR is approved when:
 
-1. **All tests pass** — GitHub Actions CI must show green ✅
+1. **All tests pass** — GitHub Actions CI workflow runs automatically on PRs:
+   - Check the `quality` job in `.github/workflows/test.yml`
+   - Must show green: pytest, typecheck, and build all pass ✅
 2. **Coverage maintained** — Project enforces 100% coverage on `enjilib_jwt`
 3. **Code review passes** — At least one maintainer approves
 4. **Token contract verified** — If applicable, token compatibility explained and tested
 5. **Packaging approved** — If dependencies/metadata changed, maintainer explicitly approves
 6. **Documentation updated** — Changes to behavior require README, API.md, or CHANGELOG.md updates
+
+> **Note**: Making CI checks *required* for merge (branch protection) is an admin step handled separately. For now, reviewers must verify CI is green before merging.
 
 ### Review Timelines
 

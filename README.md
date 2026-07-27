@@ -173,22 +173,24 @@ For details on the token encryption contract with enji-auth issuer and Collector
 
 ### Quick start
 
-Use the local gate Makefile for reproducible verification:
+Use the local gate **Makefile** for reproducible verification:
 
 ```bash
 make check      # Full local gate: sync + test + typecheck + build
 make test       # Run pytest with coverage (must be 100%)
-make sync       # Sync dependencies with uv
+make sync       # Sync dependencies with uv (frozen, CI-parity)
 make build      # Build wheel and sdist
 make typecheck  # Run mypy type checker
 ```
 
+**What is CI testing?** The same `quality` job runs on every PR via `.github/workflows/test.yml`, executing these exact commands.
+
 ### Manual setup (without Makefile)
 
-Install dependencies:
+Install dependencies (frozen for CI parity):
 
 ```bash
-uv sync --all-extras
+uv sync --frozen --all-extras
 ```
 
 ### Run tests
@@ -206,7 +208,7 @@ uv run pytest --cov=enjilib_jwt --cov-report=term-missing
 ### Build package
 
 ```bash
-python -m build
+uv build
 ```
 
 ## License

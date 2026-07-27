@@ -23,6 +23,7 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 - Full async support via standard `async def` functions
 - Type hints on all public APIs
 - 100% test coverage (pytest with coverage enforcement)
+- **CI/CD Gate**: GitHub Actions workflow (`.github/workflows/test.yml`) for automated testing, type checking, and package building
 
 ### Changed
 - N/A (initial release)
